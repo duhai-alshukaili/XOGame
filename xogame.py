@@ -286,6 +286,22 @@ def utility(state, max_player):
         return None
 
 
+def is_cutoff(depth):
+    """Check if the search should be cut off at the specified depth.
+
+    The `is_cutoff` function determines whether the search should be terminated
+    based on the given depth. It is commonly used in algorithms like Minimax with
+    alpha-beta pruning to limit the depth of the search.
+
+    Args:
+        depth (int): The current depth of the search.
+
+    Returns:
+        bool: True if the search should be cut off at the specified depth, False otherwise.
+    """
+    return depth == 4
+
+
 def get_computer_move(state):
     """Get the optimal move for the computer player using the Minimax algorithm.
 
@@ -303,11 +319,11 @@ def get_computer_move(state):
                column indices (starting from 1) on the board.
     """
     max_player = player(state)
-    value, move = max_value(state, max_player, float('-inf'), float('inf'))
+    value, move = max_value(state, max_player, 0 , float('-inf'), float('inf'))
     return value, move
 
 
-def max_value(state, max_player, alpha, beta):
+def max_value(state, max_player, depth, alpha, beta):
     """Evaluate the maximum value for the current state in the Minimax algorithm.
 
     The `max_value` function represents the maximizing player's perspective in the
@@ -327,14 +343,25 @@ def max_value(state, max_player, alpha, beta):
     """
     p = player(state)  # Get the current player
 
+    # Check if the current state is terminal
     if terminal(state):
+        # If terminal, return the utility value and no specific move
         return utility(state, max_player), None
+
+    # Check if the search should be cut off at the specified depth
+    if is_cutoff(depth):
+        # If cut off, return the evaluated board score and no specific move
+        return evaluate_board(state, max_player), None
 
     v = float('-inf')
     move = None
 
     for a in actions(state, p):
-        v2, a2 = min_value(result(state, a), max_player, alpha, beta)
+
+        # Recursively call the min_value function to explore the opponent's moves
+        # and obtain the minimum utility value and corresponding move
+        v2, a2 = min_value(result(state, a), max_player, depth+1, alpha, beta)
+
 
         if v2 > v:
             v, move = v2, a
@@ -346,7 +373,7 @@ def max_value(state, max_player, alpha, beta):
     return v, move
 
 
-def min_value(state, max_player, alpha, beta):
+def min_value(state, max_player, depth, alpha, beta):
     """Evaluate the minimum value for the current state in the Minimax algorithm.
 
     The `min_value` function represents the minimizing player's perspective in the
@@ -366,14 +393,25 @@ def min_value(state, max_player, alpha, beta):
     """
     p = player(state)  # Get the current player
 
+    # Check if the current state is terminal
     if terminal(state):
+        # If terminal, return the utility value and no specific move
         return utility(state, max_player), None
+    
+    # Check if the search should be cut off at the specified depth
+    if is_cutoff(depth):
+        # If cut off, return the evaluated board score and no specific move
+        return evaluate_board(state, max_player), None
 
     v = float('inf')
     move = None
 
     for a in actions(state, p):
-        v2, a2 = max_value(result(state, a), max_player, alpha, beta)
+
+        # Recursively call the max_value function to explore the computer player's moves
+        # and obtain the maximum utility value and corresponding move
+        v2, a2 = max_value(result(state, a), max_player, depth + 1, alpha, beta)
+
 
         if v2 < v:
             v, move = v2, a
@@ -385,6 +423,69 @@ def min_value(state, max_player, alpha, beta):
     return v, move
 
 
+def evaluate_board(board, player):
+    """
+    Evaluate the Tic-Tac-Toe board based on the specified heuristic.
+
+    Args:
+        board (2D array): The current game board.
+        player (str): The symbol of the player ('X' or 'O') for whom the evaluation is done.
+
+    Returns:
+        int: The heuristic score for the current board position.
+    """
+    opponent = 'X' if player == 'O' else 'O'
+    score = 0
+
+    # Check for 3-in-a-line, 2-in-a-line, and 1-in-a-line for the specified player
+    for line in get_all_lines(board):
+        count_player = line.count(player)
+        count_opponent = line.count(opponent)
+        count_empty = line.count(' ')
+
+        if count_opponent == 0:
+            # Computer's seeds only
+            if count_player == 3:
+                score += 30
+            elif count_player == 2 and count_empty == 1:
+                score += 10
+            elif count_player == 1 and count_empty == 2:
+                score += 1
+        elif count_player == 0:
+            # Opponent's seeds only
+            if count_opponent == 3:
+                score -= 30
+            elif count_opponent == 2 and count_empty == 1:
+                score -= 10
+            elif count_opponent == 1 and count_empty == 2:
+                score -= 1
+
+    return score
+
+
+def get_all_lines(board):
+    """
+    Generate all possible lines (rows, columns, and diagonals) from the Tic-Tac-Toe board.
+
+    Args:
+        board (2D array): The current game board.
+
+    Returns:
+        List[List[str]]: A list containing all possible lines in the board.
+    """
+    lines = []
+
+    # Rows
+    lines.extend(board)
+
+    # Columns
+    lines.extend(zip(*board))
+
+    # Diagonals
+    lines.append([board[i][i] for i in range(len(board))])
+    lines.append([board[i][len(board) - 1 - i] for i in range(len(board))])
+
+    return lines
 
 
 
@@ -413,16 +514,16 @@ def main_game_loop():
     count = 0
 
     while True:
-
-        
-        print(f"Available Moves for {player(board)}: {actions(board, player(board))}")
+        # print(f"Available Moves for {player(board)}: {actions(board, player(board))}")
         display_board(board)
 
         if current_player == human_symbol:
             row, col = get_user_move(board)
         else:
 
-            if count < (board_size - 1) * 2:
+            # Make some random moves to avoid evaluating an empty board at the start of the game.
+            # This is a temporary solution; ideally, replace this with an open game database.
+            if count < (board_size - 2) * 2:    
                 row, col = get_random_computer_move(board)
             else:
                 value, (row, col) = get_computer_move(board)
@@ -443,6 +544,67 @@ def main_game_loop():
 
         current_player = 'O' if current_player =='X' else 'X'
 
+def test_eval_board():
+
+     # Boards where 'X' has the advantage
+    board4_x_advantage = [
+        ['X', 'O', ' ', 'X'],
+        ['O', ' ', ' ', 'O'],
+        [' ', ' ', 'X', 'O'],
+        ['O', ' ', ' ', 'X']
+    ]
+    print(evaluate_board(board4_x_advantage, 'X'))
+
+    board5_x_advantage = [
+        ['X', 'O', ' ', 'X', ' '],
+        ['O', 'X', ' ', 'O', 'O'],
+        ['O', ' ', 'X', 'O', ' '],
+        ['O', ' ', 'X', 'X', ' '],
+        ['X', 'O', 'X', ' ', 'O']
+    ]
+
+    print(evaluate_board(board5_x_advantage, 'X'))
+
+    board6_x_advantage = [
+        ['X', 'O', ' ', 'X', ' ', 'O'],
+        ['O', 'X', ' ', 'O', ' ', 'X'],
+        [' ', ' ', 'X', 'O', ' ', 'O'],
+        ['O', ' ', ' ', 'X', ' ', ' '],
+        ['X', 'O', ' ', ' ', 'O', 'X'],
+        [' ', 'X', 'O', 'O', 'X', ' ']
+    ]
+    print(evaluate_board(board6_x_advantage, 'O'))
+
+    # Boards where 'O' has the advantage
+    board4_o_advantage = [
+        ['X', 'O', ' ', 'X'],
+        ['O', 'O', ' ', 'O'],
+        [' ', ' ', 'X', 'O'],
+        ['O', ' ', ' ', 'X']
+    ]
+    print(evaluate_board(board4_o_advantage, 'X'))
+
+    board5_o_advantage = [
+        ['X', 'O', ' ', 'X', ' '],
+        ['O', 'O', ' ', 'O', ' '],
+        [' ', ' ', 'X', 'O', ' '],
+        ['O', ' ', ' ', 'X', ' '],
+        ['X', 'O', ' ', ' ', 'O']
+    ]
+    print(evaluate_board(board5_o_advantage, 'X'))
+
+    board6_o_advantage = [
+        ['X', 'O', ' ', 'X', ' ', 'O'],
+        ['O', 'O', ' ', 'O', ' ', 'X'],
+        [' ', ' ', 'X', 'O', ' ', 'O'],
+        ['O', ' ', ' ', 'X', ' ', ' '],
+        ['X', 'O', ' ', ' ', 'O', 'X'],
+        [' ', 'X', 'O', 'O', 'X', ' ']
+    ]
+    print(evaluate_board(board6_o_advantage, 'X'))
+
 if __name__ == '__main__':
 
     main_game_loop()
+
+   
