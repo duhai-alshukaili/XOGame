@@ -277,9 +277,9 @@ def utility(state, max_player):
 
     
     if check_win(state, max_player):
-        return 100
+        return 1000
     elif check_win(state, 'X' if max_player == 'O' else 'O'):
-        return -100
+        return -1000
     elif check_draw(state):
         return 0
     else:
@@ -302,8 +302,8 @@ def is_cutoff(depth):
     return depth == 4
 
 
-def get_computer_move(state):
-    """Get the optimal move for the computer player using the Minimax algorithm.
+def alpha_beta_search(state):
+    """Get the optimal move for the computer player using the Minimax algorithm with alpha-beta search.
 
     The `get_computer_move` function determines the best move for the computer player
     by applying the Minimax algorithm. It evaluates the possible moves based on the current
@@ -489,8 +489,8 @@ def get_all_lines(board):
 
 
 
-def main_game_loop():
-    """Run the main game loop for a tic-tac-toe game.
+def human_vs_computer_game_loop():
+    """Run the Human vs Computer loop for a tic-tac-toe game.
 
     This function initializes the game board, allows the user to choose their symbol
     ('X' or 'O'), and alternates between the human player and the computer player until
@@ -510,7 +510,6 @@ def main_game_loop():
 
     current_player = 'X'
 
-
     count = 0
 
     while True:
@@ -526,7 +525,7 @@ def main_game_loop():
             if count < (board_size - 2) * 2:    
                 row, col = get_random_computer_move(board)
             else:
-                value, (row, col) = get_computer_move(board)
+                value, (row, col) = alpha_beta_search(board)
             print(f"Computer played in cell ({row + 1}, {col + 1})")
 
         make_move(board, row, col, current_player)
@@ -535,6 +534,69 @@ def main_game_loop():
             display_board(board)
             print(f"Player {current_player} wins!")
             break
+        elif check_draw(board):
+            display_board(board)
+            print("It is a draw!")
+            break
+
+        count += 1
+
+        current_player = 'O' if current_player =='X' else 'X'
+
+def human_vs_human_game_loop():
+    """
+    Run a game loop for a Tic-Tac-Toe game where two human players compete against each other.
+
+    This function initializes the game board based on user input for size (between 3x3 to 9x9),
+    lets each player choose their symbol ('X' or 'O'), and alternates turns between the two
+    players. The game continues until one player wins by aligning their symbols vertically,
+    horizontally, or diagonally without any breaks, or until the game board is full and the game
+    is declared a draw. The name of each player is requested for personalized messaging during
+    gameplay.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
+    
+    board_size = int(input("Enter the size of the board (3 to 9): "))
+    board = intialize_board(board_size)
+
+    human_symbol1 = input("Choose you symbol for the first player (X or O): ").upper()
+    # human_symbol2 = 'X' if human_symbol1 == 'O' else 'O'
+
+    human_name1 = input("Enter the name of the first player: ")
+    human_name2 = input("Enter the name of the second player: ")
+
+    current_player = 'X'
+
+
+    count = 0
+
+    while True:
+        display_board(board)
+
+        # get a move
+        row, col = get_user_move(board)
+
+        if current_player == human_symbol1:
+            print(f"{human_name1} played in cell ({row+1}, {col+1})")
+        else:
+            print(f"{human_name2} played in cell ({row+1}, {col+1})")
+
+        make_move(board, row, col, current_player)
+
+        if check_win(board, current_player):
+            display_board(board)
+
+            if current_player == human_symbol1:
+                print(f"{human_name1} wins!")
+            else:
+                print(f"{human_name2} wins!")
+            break
+
         elif check_draw(board):
             display_board(board)
             print("It is a draw!")
@@ -605,6 +667,7 @@ def test_eval_board():
 
 if __name__ == '__main__':
 
-    main_game_loop()
+    # human_vs_computer_game_loop()
+    human_vs_human_game_loop()
 
    
